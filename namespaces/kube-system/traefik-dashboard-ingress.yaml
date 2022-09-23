@@ -1,0 +1,26 @@
+apiVersion: traefik.containo.us/v1alpha1
+kind: IngressRoute
+metadata:
+  name: traefik-dashboard
+  namespace: kube-system
+spec:
+  entryPoints:
+    - web
+  routes:
+    - match: PathPrefix(`/dashboard`) || PathPrefix(`/api`)
+      kind: Rule
+      services:
+        - name: api@internal
+          kind: TraefikService
+      middlewares:
+        - name: traefik-dashboard-add-trailing-slash
+---
+apiVersion: traefik.containo.us/v1alpha1
+kind: Middleware
+metadata:
+  name: traefik-dashboard-add-trailing-slash
+  namespace: kube-system
+spec:
+  redirectRegex:
+    regex: ^.*/dashboard$
+    replacement: /dashboard/

@@ -1,0 +1,53 @@
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: longhorn-ui-service
+  namespace: longhorn-system
+spec:
+  type: ClusterIP
+  selector:
+    app: longhorn-ui
+  ports:
+  - name: http
+    port: 8000
+    protocol: TCP
+    targetPort: 8000
+---
+apiVersion: traefik.containo.us/v1alpha1
+kind: IngressRoute
+metadata:
+  name: longhorn-ui-ingress-route
+  namespace: longhorn-system
+spec:
+  entryPoints:
+    - web
+  routes:
+    - match: PathPrefix(`/longhorn`)
+      kind: Rule
+      services:
+        - name: longhorn-ui-service
+          port: http
+      middlewares:
+        - name: longhorn-ui-middleware-add-trailing-slash
+        - name: longhorn-ui-middleware-stripprefix
+---
+apiVersion: traefik.containo.us/v1alpha1
+kind: Middleware
+metadata:
+  name: longhorn-ui-middleware-add-trailing-slash
+  namespace: longhorn-system
+spec:
+  redirectRegex:
+    regex: ^.*/longhorn$
+    replacement: /longhorn/
+---
+apiVersion: traefik.containo.us/v1alpha1
+kind: Middleware
+metadata:
+  name: longhorn-ui-middleware-stripprefix
+  namespace: longhorn-system
+spec:
+  stripPrefix:
+    prefixes:
+      - /longhorn
