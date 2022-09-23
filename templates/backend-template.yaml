@@ -1,0 +1,77 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{APP_NAME}}
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: {{APP_NAME}}
+  template:
+    metadata:
+      labels:
+        app: {{APP_NAME}}
+    spec:
+      nodeSelector:
+        node-type: worker
+      containers:
+      - name: {{APP_NAME}}
+        image: {{APP_DOCKER_IMAGE}}
+        ports:
+          - containerPort: 8080
+        imagePullPolicy: IfNotPresent
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: {{APP_NAME}}-service
+  namespace: default
+spec:
+  type: ClusterIP
+  selector:
+    app: {{APP_NAME}}
+  ports:
+  - name: http
+    port: 8080
+    protocol: TCP
+    targetPort: 8080
+---
+apiVersion: traefik.containo.us/v1alpha1
+kind: IngressRoute
+metadata:
+  name: {{APP_NAME}}-ingress-route
+  namespace: default
+spec:
+  entryPoints:
+    - web
+  routes:
+    - match: PathPrefix(`/{{APP_PATH_PREFIX}}`)
+      kind: Rule
+      services:
+        - name: {{APP_NAME}}-service
+          port: http
+      middlewares:
+        - name: {{APP_NAME}}-middleware-add-trailing-slash
+        - name: {{APP_NAME}}-middleware-stripprefix
+---
+apiVersion: traefik.containo.us/v1alpha1
+kind: Middleware
+metadata:
+  name: {{APP_NAME}}-middleware-add-trailing-slash
+  namespace: default
+spec:
+  redirectRegex:
+    regex: ^.*/{{APP_PATH_PREFIX}}$
+    replacement: /{{APP_PATH_PREFIX}}/
+---
+apiVersion: traefik.containo.us/v1alpha1
+kind: Middleware
+metadata:
+  name: {{APP_NAME}}-middleware-stripprefix
+  namespace: default
+spec:
+  stripPrefix:
+    prefixes:
+      - /{{APP_PATH_PREFIX}}
