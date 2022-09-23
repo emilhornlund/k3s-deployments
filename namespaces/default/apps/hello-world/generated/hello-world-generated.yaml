@@ -1,0 +1,77 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hello-world
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: hello-world
+  template:
+    metadata:
+      labels:
+        app: hello-world
+    spec:
+      nodeSelector:
+        node-type: worker
+      containers:
+      - name: hello-world
+        image: registry.cluster.local:5000/emilhornlund/hello-world:e522f0059976aae28069
+        ports:
+          - containerPort: 8080
+        imagePullPolicy: IfNotPresent
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: hello-world-service
+  namespace: default
+spec:
+  type: ClusterIP
+  selector:
+    app: hello-world
+  ports:
+  - name: http
+    port: 8080
+    protocol: TCP
+    targetPort: 8080
+---
+apiVersion: traefik.containo.us/v1alpha1
+kind: IngressRoute
+metadata:
+  name: hello-world-ingress-route
+  namespace: default
+spec:
+  entryPoints:
+    - web
+  routes:
+    - match: PathPrefix(`/hello_world`)
+      kind: Rule
+      services:
+        - name: hello-world-service
+          port: http
+      middlewares:
+        - name: hello-world-middleware-add-trailing-slash
+        - name: hello-world-middleware-stripprefix
+---
+apiVersion: traefik.containo.us/v1alpha1
+kind: Middleware
+metadata:
+  name: hello-world-middleware-add-trailing-slash
+  namespace: default
+spec:
+  redirectRegex:
+    regex: ^.*/hello_world$
+    replacement: /hello_world/
+---
+apiVersion: traefik.containo.us/v1alpha1
+kind: Middleware
+metadata:
+  name: hello-world-middleware-stripprefix
+  namespace: default
+spec:
+  stripPrefix:
+    prefixes:
+      - /hello_world
